@@ -1,20 +1,25 @@
+import os
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import func
-import os
 
+# Initialize Flask app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace('postgres://', 'postgresql://')
+
+# Configure database
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///laundry.db').replace('postgres://', 'postgresql://')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key')
+
+# Initialize database and login manager
 db = SQLAlchemy(app)
-
-login_manager = LoginManager()
+login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-login_manager.init_app(app)
 
+# Database Models
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True)
@@ -24,7 +29,7 @@ class User(UserMixin, db.Model):
 
 class Appliance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    type = db.Column(db.String(20))
+    type = db.Column(db.String(20))  # 'washer' or 'dryer'
     status = db.Column(db.String(20), default='free')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     reservation_time = db.Column(db.DateTime)
@@ -33,6 +38,7 @@ class Appliance(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Routes
 @app.route('/')
 def home():
     return redirect(url_for('login'))
@@ -142,4 +148,5 @@ if __name__ == '__main__':
             for i in range(3):
                 db.session.add(Appliance(type='dryer'))
             db.session.commit()
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=os.environ.get('DEBUG') == '1')
