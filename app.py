@@ -4,10 +4,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import func
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '9908'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///laundry.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace('postgres://', 'postgresql://')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key')
 db = SQLAlchemy(app)
 
 login_manager = LoginManager()
