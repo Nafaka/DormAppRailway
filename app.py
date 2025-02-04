@@ -6,7 +6,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from sqlalchemy import func
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-123'
+app.config['SECRET_KEY'] = '9908'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///laundry.db'
 db = SQLAlchemy(app)
 
