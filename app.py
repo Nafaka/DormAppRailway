@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from sqlalchemy import func
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -37,6 +38,35 @@ class Appliance(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# Background scheduler for status updates
+scheduler = BackgroundScheduler(daemon=True)
+
+def update_appliance_status(appliance):
+    if appliance.status in ['in_use', 'almost_done'] and appliance.reservation_time:
+        now = datetime.utcnow()
+        reservation_end = appliance.reservation_time + timedelta(hours=1)
+        
+        if now > reservation_end:
+            appliance.status = 'free'
+            appliance.user_id = None
+            appliance.reservation_time = None
+        elif (reservation_end - now) <= timedelta(minutes=10):
+            appliance.status = 'almost_done'
+        else:
+            appliance.status = 'in_use'
+        
+        db.session.commit()
+
+def update_all_appliances():
+    with app.app_context():
+        appliances = Appliance.query.all()
+        for appliance in appliances:
+            update_appliance_status(appliance)
+        print(f"[{datetime.utcnow()}] Updated all appliance statuses")
+
+scheduler.add_job(func=update_all_appliances, trigger='interval', minutes=1)
+scheduler.start()
 
 # Routes
 @app.route('/')
@@ -88,25 +118,10 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-def update_appliance_status(appliance):
-    if appliance.status in ['in_use', 'almost_done'] and appliance.reservation_time:
-        time_remaining = appliance.reservation_time + timedelta(hours=1) - datetime.now()
-        if time_remaining < timedelta(0):
-            appliance.status = 'free'
-            appliance.user_id = None
-            appliance.reservation_time = None
-        elif time_remaining <= timedelta(minutes=10):
-            appliance.status = 'almost_done'
-        else:
-            appliance.status = 'in_use'
-        db.session.commit()
-
 @app.route('/index')
 @login_required
 def index():
     appliances = Appliance.query.all()
-    for appliance in appliances:
-        update_appliance_status(appliance)
     return render_template('index.html', 
                          appliances=appliances,
                          datetime=datetime,
@@ -116,7 +131,7 @@ def index():
 @login_required
 def reserve(appliance_id):
     appliance = Appliance.query.get(appliance_id)
-    today = datetime.today().date()
+    today = datetime.utcnow().date()
     
     if appliance.status == 'free':
         existing_same_type = Appliance.query.filter(
@@ -131,7 +146,7 @@ def reserve(appliance_id):
             
         appliance.status = 'in_use'
         appliance.user_id = current_user.id
-        appliance.reservation_time = datetime.now()
+        appliance.reservation_time = datetime.utcnow()
         db.session.commit()
         flash(f'{appliance.type.capitalize()} {appliance_id} reserved for 1 hour!', 'success')
     else:
