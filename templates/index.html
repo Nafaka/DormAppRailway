@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard">
+    <header class="header">
+        <h1>Welcome, {{ current_user.name }}!</h1>
+        <a href="{{ url_for('logout') }}" class="logout-btn">Logout</a>
+    </header>
+
+    <div class="appliance-section">
+        <h2>Washing Machines</h2>
+        <div class="appliance-grid">
+            {% for appliance in appliances if appliance.type == 'washer' %}
+                {% include 'appliance_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="appliance-section">
+        <h2>Dryers</h2>
+        <div class="appliance-grid">
+            {% for appliance in appliances if appliance.type == 'dryer' %}
+                {% include 'appliance_card.html' %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

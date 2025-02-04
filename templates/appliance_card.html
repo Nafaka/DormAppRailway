@@ -1,0 +1,27 @@
+<div class="appliance-card {{ appliance.status }}">
+    <img src="{{ url_for('static', filename='images/' ~ appliance.type ~ '.png') }}" 
+         alt="{{ appliance.type }}" 
+         class="appliance-image">
+    <div class="appliance-info">
+        <h3>{{ appliance.type|title }} {{ appliance.id }}</h3>
+        
+        {% if appliance.status == 'free' %}
+            <a href="{{ url_for('reserve', appliance_id=appliance.id) }}" 
+               class="status-btn free">
+                Reserve Now
+            </a>
+        {% else %}
+            <div class="status-btn {{ 'almost-done' if appliance.status == 'almost_done' else 'in-use' }}">
+                {% if appliance.status == 'almost_done' %}
+                    {{ ((appliance.reservation_time + timedelta(hours=1)) - datetime.now()).seconds // 60 }} min left
+                {% else %}
+                    In Use
+                {% endif %}
+            </div>
+            <div class="reservation-info">
+                <p>By: {{ appliance.user.name }}</p>
+                <p>Until: {{ (appliance.reservation_time + timedelta(hours=1)).strftime('%H:%M') }}</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
